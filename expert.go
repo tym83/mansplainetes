@@ -158,8 +158,7 @@ func (e *Expert) FirstRun() bool {
 	if err != nil {
 		return false
 	}
-	f.Close()
-	return true
+	return f.Close() == nil
 }
 
 // Reported returns how many times he has been reported to HR.
@@ -423,6 +422,6 @@ func (e *Expert) remember(key string) {
 	_, werr := f.WriteString(strings.Join(ideas, "\n") + "\n")
 	cerr := f.Close()
 	if werr != nil || cerr != nil || os.Rename(f.Name(), e.History) != nil {
-		os.Remove(f.Name())
+		_ = os.Remove(f.Name()) // best effort: only our own temp file
 	}
 }

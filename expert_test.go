@@ -327,9 +327,9 @@ func TestIdeasSurviveLegacyLongLinesAndStayBounded(t *testing.T) {
 func TestTailKeepsOnlyTheEnd(t *testing.T) {
 	var tb tailBuffer
 	for i := 0; i < 100; i++ {
-		fmt.Fprintf(&tb, "%s\n", strings.Repeat("y", 1000))
+		_, _ = fmt.Fprintf(&tb, "%s\n", strings.Repeat("y", 1000))
 	}
-	fmt.Fprint(&tb, "Error from server (Forbidden)")
+	_, _ = fmt.Fprint(&tb, "Error from server (Forbidden)")
 	if len(tb.String()) != tailSize || !strings.HasSuffix(tb.String(), "(Forbidden)") {
 		t.Errorf("tail is %d bytes", len(tb.String()))
 	}
@@ -376,7 +376,7 @@ var (
 func TestMain(m *testing.M) {
 	code := m.Run()
 	if builtBin != "" {
-		os.RemoveAll(filepath.Dir(builtBin))
+		_ = os.RemoveAll(filepath.Dir(builtBin))
 	}
 	os.Exit(code)
 }
@@ -451,7 +451,7 @@ func (h *harness) run(env []string, args ...string) result {
 // files lists everything under HOME, which holds the cache directory.
 func (h *harness) files() []string {
 	var out []string
-	filepath.Walk(h.home, func(p string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(h.home, func(p string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() {
 			out = append(out, p)
 		}
@@ -491,7 +491,7 @@ func TestKubectlGetsTheRealStderrWhenSilent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer errFile.Close()
+	defer func() { _ = errFile.Close() }()
 	for mode, want := range map[string]string{"MANSPLAIN=": "direct\n", "MANSPLAIN=off": "direct\n", "MANSPLAIN=always": "pipe\n"} {
 		cmd := exec.Command(h.bin, "get", "pods")
 		cmd.Env = append(append([]string(nil), h.env...), mode)
