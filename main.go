@@ -54,15 +54,14 @@ func run(args []string) int {
 	}
 	talk := shouldTalk() && !expert.Fired()
 	say := func(lines []string) {
-		if !talk {
-			return
-		}
 		for _, l := range lines {
 			fmt.Fprintf(os.Stderr, "\033[3;36m%s\033[0m\n", l)
 		}
 	}
 
-	say(expert.Before(args))
+	if talk {
+		say(expert.Before(args))
+	}
 
 	var captured bytes.Buffer
 	cmd := exec.Command(kubectl, args...)
@@ -73,14 +72,20 @@ func run(args []string) int {
 	var exit *exec.ExitError
 	switch {
 	case err == nil:
-		say(expert.AfterSuccess(args))
+		if talk {
+			say(expert.AfterSuccess(args))
+		}
 		return 0
 	case errors.As(err, &exit):
-		say(expert.AfterFailure(captured.String()))
+		if talk {
+			say(expert.AfterFailure(captured.String()))
+		}
 		return exit.ExitCode()
 	default:
 		fmt.Fprintln(os.Stderr, err)
-		say(expert.AfterFailure(err.Error()))
+		if talk {
+			say(expert.AfterFailure(err.Error()))
+		}
 		return 1
 	}
 }

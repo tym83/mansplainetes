@@ -17,7 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"os"
@@ -139,7 +140,7 @@ func Plural(resource string) string {
 // Expert is the colleague nobody asked for.
 type Expert struct {
 	Rand    *rand.Rand
-	History string // file of commands that worked, to take credit for later
+	History string // hashes of commands that worked, to take credit for later
 	Reports string // file of HR reports filed against him
 }
 
@@ -256,7 +257,7 @@ func joinOpener(opener, text string) string {
 // AfterSuccess takes credit, and notices when the user repeats something
 // that already worked, which he then remembers as his idea.
 func (e *Expert) AfterSuccess(args []string) []string {
-	key := strings.Join(args, " ")
+	key := ideaKey(args)
 	if e.remembers(key) {
 		return []string{stolenIdea}
 	}
@@ -287,32 +288,106 @@ func Cause(stderr string) string {
 	return "Turns out " + unknownCause
 }
 
-func (e *Expert) remembers(key string) bool {
-	f, err := os.Open(e.History)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		if s.Text() == key {
+// maxIdeas bounds the ideas file; the oldest ideas are forgotten first.
+const maxIdeas = 1000
+
+// sensitiveWords mark flags and KEY=VALUE arguments whose values are never
+// kept, not even inside a hash.
+var sensitiveWords = []string{"token", "password", "passwd", "secret", "literal", "key", "credential", "cert", "auth"}
+
+func sensitive(name string) bool {
+	name = strings.ToLower(strings.TrimLeft(name, "-"))
+	for _, w := range sensitiveWords {
+		if strings.Contains(name, w) {
 			return true
 		}
 	}
 	return false
 }
 
+// Redact blanks out the values of sensitive flags and KEY=VALUE arguments
+// (--token=..., --password ..., --from-literal=password=..., DB_PASSWORD=...).
+func Redact(args []string) []string {
+	out := append([]string(nil), args...)
+	for i := 0; i < len(out); i++ {
+		name, _, hasValue := strings.Cut(out[i], "=")
+		switch {
+		case !sensitive(name):
+		case hasValue:
+			out[i] = name + "=REDACTED"
+		case strings.HasPrefix(name, "-") && i+1 < len(out) && !strings.HasPrefix(out[i+1], "-"):
+			out[i+1] = "REDACTED"
+			i++
+		}
+	}
+	return out
+}
+
+// ideaKey is what he keeps of a command that worked: a hash of the redacted
+// command line, never the command itself.
+func ideaKey(args []string) string {
+	sum := sha256.Sum256([]byte(strings.Join(Redact(args), "\x00")))
+	return hex.EncodeToString(sum[:])
+}
+
+func isIdeaKey(s string) bool {
+	if len(s) != sha256.Size*2 {
+		return false
+	}
+	_, err := hex.DecodeString(s)
+	return err == nil
+}
+
+// ideas reads the ideas file. Anything that is not a hash (such as plain
+// command lines written by older versions) is dropped, and is gone from
+// disk the next time he remembers something.
+func (e *Expert) ideas() []string {
+	if e.History == "" {
+		return nil
+	}
+	b, err := os.ReadFile(e.History)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, l := range strings.Split(string(b), "\n") {
+		if isIdeaKey(l) {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+func (e *Expert) remembers(key string) bool {
+	for _, k := range e.ideas() {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
+
+// remember rewrites the ideas file with key added, keeping at most
+// maxIdeas entries. The file is replaced atomically.
 func (e *Expert) remember(key string) {
 	if e.History == "" {
 		return
 	}
-	if err := os.MkdirAll(filepath.Dir(e.History), 0o700); err != nil {
+	ideas := append(e.ideas(), key)
+	if len(ideas) > maxIdeas {
+		ideas = ideas[len(ideas)-maxIdeas:]
+	}
+	dir := filepath.Dir(e.History)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return
 	}
-	f, err := os.OpenFile(e.History, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+	f, err := os.CreateTemp(dir, ".ideas-*")
 	if err != nil {
 		return
 	}
-	defer f.Close()
-	fmt.Fprintln(f, key)
+	_, werr := f.WriteString(strings.Join(ideas, "\n") + "\n")
+	cerr := f.Close()
+	if werr != nil || cerr != nil || os.Rename(f.Name(), e.History) != nil {
+		os.Remove(f.Name())
+	}
 }

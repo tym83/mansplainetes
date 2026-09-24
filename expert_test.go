@@ -22,13 +22,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 )
 
 func expert(t *testing.T) *Expert {
 	dir := t.TempDir()
-	return &Expert{Rand: rand.New(rand.NewSource(1)), History: filepath.Join(dir, "ideas"), Reports: filepath.Join(dir, "hr")}
+	return &Expert{
+		Rand:    rand.New(rand.NewSource(1)),
+		History: filepath.Join(dir, "ideas"),
+		Reports: filepath.Join(dir, "hr"),
+	}
 }
 
 func TestParse(t *testing.T) {
@@ -250,6 +256,185 @@ func TestOpenerCapitalization(t *testing.T) {
 	} {
 		if got := joinOpener(tc[0], tc[1]); got != tc[2] {
 			t.Errorf("got %q, want %q", got, tc[2])
+		}
+	}
+}
+
+func TestRedactedHashesOnly(t *testing.T) {
+	got := strings.Join(Redact([]string{
+		"create", "secret", "generic", "db", "--from-literal=password=hunter2",
+		"--token", "abc", "--password=pw", "--namespace", "shop", "DB_PASSWORD=x",
+	}), " ")
+	for _, leak := range []string{"hunter2", "abc", "pw ", "=x"} {
+		if strings.Contains(got+" ", leak) {
+			t.Errorf("%q leaked in %q", leak, got)
+		}
+	}
+	if !strings.Contains(got, "--namespace shop") {
+		t.Errorf("redacted too much: %q", got)
+	}
+	if ideaKey([]string{"get", "pods", "--token=a"}) != ideaKey([]string{"get", "pods", "--token=b"}) {
+		t.Error("the token still shapes what he keeps")
+	}
+
+	e := expert(t)
+	e.AfterSuccess([]string{"get", "pods", "--token=s3cr3t"})
+	b, err := os.ReadFile(e.History)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		if !isIdeaKey(l) {
+			t.Errorf("ideas file holds something other than a hash: %q", l)
+		}
+	}
+	if strings.Contains(string(b), "pods") || strings.Contains(string(b), "s3cr3t") {
+		t.Errorf("command text on disk: %q", b)
+	}
+}
+
+func TestIdeasSurviveLegacyLongLinesAndStayBounded(t *testing.T) {
+	e := expert(t)
+	legacy := strings.Repeat("x", 200<<10) + "\nget pods --token=old\n"
+	if err := os.WriteFile(e.History, []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	e.AfterSuccess([]string{"get", "pods"})
+	if again := e.AfterSuccess([]string{"get", "pods"}); again[0] != stolenIdea {
+		t.Errorf("a long line made him forget: %v", again)
+	}
+	if b, _ := os.ReadFile(e.History); strings.Contains(string(b), "token") || strings.Contains(string(b), "xxx") {
+		t.Error("legacy plain-text commands were kept")
+	}
+	var full strings.Builder
+	for i := 0; i < maxIdeas+10; i++ {
+		full.WriteString(ideaKey([]string{"get", strconv.Itoa(i)}) + "\n")
+	}
+	if err := os.WriteFile(e.History, []byte(full.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	e.remember(ideaKey([]string{"get", "latest"}))
+	if !e.remembers(ideaKey([]string{"get", "latest"})) || e.remembers(ideaKey([]string{"get", "0"})) {
+		t.Error("the newest idea must stay and the oldest go")
+	}
+	if n := len(e.ideas()); n != maxIdeas {
+		t.Errorf("ideas file has %d entries, want %d", n, maxIdeas)
+	}
+}
+
+var (
+	buildOnce sync.Once
+	builtBin  string
+	buildErr  error
+)
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if builtBin != "" {
+		os.RemoveAll(filepath.Dir(builtBin))
+	}
+	os.Exit(code)
+}
+
+// harness builds the binary once per test process and gives each test its
+// own HOME and cache directory.
+type harness struct {
+	t         *testing.T
+	bin, home string
+	env       []string
+}
+
+func newHarness(t *testing.T) *harness {
+	t.Helper()
+	buildOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "mansplainctl-test-")
+		if err != nil {
+			buildErr = err
+			return
+		}
+		builtBin = filepath.Join(dir, "mansplainctl")
+		if out, err := exec.Command("go", "build", "-o", builtBin, ".").CombinedOutput(); err != nil {
+			buildErr = fmt.Errorf("%v\n%s", err, out)
+		}
+	})
+	if buildErr != nil {
+		t.Fatalf("build: %v", buildErr)
+	}
+	home := t.TempDir()
+	var env []string
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "MANSPLAIN") && !strings.HasPrefix(kv, "HOME=") && !strings.HasPrefix(kv, "XDG_CACHE_HOME=") {
+			env = append(env, kv)
+		}
+	}
+	env = append(env, "HOME="+home, "XDG_CACHE_HOME="+filepath.Join(home, ".cache"), "MANSPLAIN_SEED=1")
+	return &harness{t: t, bin: builtBin, home: home, env: env}
+}
+
+// fake writes a fake kubectl script and points MANSPLAIN_KUBECTL at it.
+func (h *harness) fake(script string) string {
+	h.t.Helper()
+	path := filepath.Join(h.t.TempDir(), "kubectl")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+script), 0o755); err != nil {
+		h.t.Fatal(err)
+	}
+	h.env = append(h.env, "MANSPLAIN_KUBECTL="+path)
+	return path
+}
+
+type result struct {
+	stdout, stderr string
+	code           int
+}
+
+func (h *harness) run(env []string, args ...string) result {
+	h.t.Helper()
+	cmd := exec.Command(h.bin, args...)
+	cmd.Env = append(append([]string(nil), h.env...), env...)
+	var stdout, stderr strings.Builder
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	code := 0
+	if ee, ok := err.(*exec.ExitError); ok {
+		code = ee.ExitCode()
+	} else if err != nil {
+		h.t.Fatal(err)
+	}
+	return result{stdout.String(), stderr.String(), code}
+}
+
+// files lists everything under HOME, which holds the cache directory.
+func (h *harness) files() []string {
+	var out []string
+	filepath.Walk(h.home, func(p string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() {
+			out = append(out, p)
+		}
+		return nil
+	})
+	return out
+}
+
+func TestSilentMeansNothingOnDisk(t *testing.T) {
+	for _, mode := range []string{"MANSPLAIN=", "MANSPLAIN=off"} {
+		h := newHarness(t)
+		h.fake("echo ok\n")
+		for i := 0; i < 2; i++ {
+			if r := h.run([]string{mode}, "get", "pods", "--token=s3cr3t"); r.code != 0 || r.stderr != "" {
+				t.Fatalf("%s: %+v", mode, r)
+			}
+		}
+		if f := h.files(); len(f) != 0 {
+			t.Errorf("%s: wrote %v while silent", mode, f)
+		}
+	}
+
+	h := newHarness(t)
+	h.fake("echo ok\n")
+	h.run([]string{"MANSPLAIN=always"}, "get", "pods", "--token=s3cr3t")
+	for _, f := range h.files() {
+		if b, _ := os.ReadFile(f); strings.Contains(string(b), "s3cr3t") || strings.Contains(string(b), "pods") {
+			t.Errorf("%s holds the command: %q", f, b)
 		}
 	}
 }
