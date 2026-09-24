@@ -32,6 +32,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -44,8 +45,14 @@ func run(args []string) int {
 	if kubectl == "" {
 		kubectl = "kubectl"
 	}
-	talk := shouldTalk()
 	expert := newExpert()
+	// The user can file a complaint whenever they have had enough, with or
+	// without saying what happened: mansplainctl report [what he did].
+	if len(args) >= 1 && args[0] == "report" {
+		fmt.Println(expert.Report(strings.Join(args[1:], " ")))
+		return 0
+	}
+	talk := shouldTalk() && !expert.Fired()
 	say := func(lines []string) {
 		if !talk {
 			return
@@ -96,9 +103,10 @@ func newExpert() *Expert {
 	if s, err := strconv.ParseInt(os.Getenv("MANSPLAIN_SEED"), 10, 64); err == nil {
 		seed = s
 	}
-	history := ""
+	e := &Expert{Rand: rand.New(rand.NewSource(seed))}
 	if dir, err := os.UserCacheDir(); err == nil {
-		history = filepath.Join(dir, "mansplainetes", "ideas")
+		e.History = filepath.Join(dir, "mansplainetes", "ideas")
+		e.Reports = filepath.Join(dir, "mansplainetes", "hr-reports")
 	}
-	return &Expert{Rand: rand.New(rand.NewSource(seed)), History: history}
+	return e
 }

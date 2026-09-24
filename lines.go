@@ -109,3 +109,25 @@ var causes = []cause{
 }
 
 const unknownCause = "I have no idea why, but it was definitely something I did."
+
+// advances are what he says when he "just wants to be friendly". Every one
+// comes with the way out.
+var advances = []string{
+	"You should smile more when you type `apply`.",
+	"Nice YAML. Is that indentation natural?",
+	"We should grab a coffee sometime, and I'll explain Helm to you. Just the two of us.",
+	"Working late? Me too. Want me to walk you to your pod?",
+	"Are you seeing anyone? Asking for the scheduler.",
+	"Your namespace or mine?",
+	"I noticed you were online at 23:40 yesterday. Just noticing.",
+}
+
+// reportHint follows every advance.
+const reportHint = "(Being harassed by your CLI? Run: mansplainctl report)"
+
+// consequences are what HR does after each report, in order.
+var consequences = []string{
+	"HR has received your report. He has been moved to the team that maintains the legacy Jenkins, " +
+		"and he will not bother you personally again. He will keep explaining things, because HR says that is \"just his style\".",
+	"Second report received. HR has let him go. It's quiet now. kubectl will just run.",
+}

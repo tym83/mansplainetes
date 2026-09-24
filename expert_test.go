@@ -26,7 +26,8 @@ import (
 )
 
 func expert(t *testing.T) *Expert {
-	return &Expert{Rand: rand.New(rand.NewSource(1)), History: filepath.Join(t.TempDir(), "ideas")}
+	dir := t.TempDir()
+	return &Expert{Rand: rand.New(rand.NewSource(1)), History: filepath.Join(dir, "ideas"), Reports: filepath.Join(dir, "hr")}
 }
 
 func TestParse(t *testing.T) {
@@ -131,5 +132,64 @@ func TestPipesStayClean(t *testing.T) {
 	out, _, _ = run("MANSPLAIN=always", "get", "pods")
 	if out != "real output\n" {
 		t.Errorf("mansplaining leaked into stdout: %q", out)
+	}
+}
+
+func TestAdvancesStopAfterHR(t *testing.T) {
+	e := expert(t)
+	advances := 0
+	for i := 0; i < 200; i++ {
+		if lines := e.Advance(); lines != nil {
+			advances++
+			if lines[1] != reportHint {
+				t.Fatalf("an advance came without the way out: %v", lines)
+			}
+		}
+	}
+	if advances == 0 {
+		t.Fatal("never tried to be \"friendly\"")
+	}
+	if !strings.Contains(e.Report(""), "legacy Jenkins") {
+		t.Error("first report had no consequence")
+	}
+	for i := 0; i < 200; i++ {
+		if e.Advance() != nil {
+			t.Fatal("still hitting on the user after an HR report")
+		}
+	}
+	if e.Fired() {
+		t.Error("fired after one report; HR is never that fast")
+	}
+	if !strings.Contains(e.Report(""), "let him go") || !e.Fired() {
+		t.Error("second report did not end it")
+	}
+	if e.Report("") != "He already doesn't work here." {
+		t.Error("third report")
+	}
+}
+
+func TestFiredMeansSilence(t *testing.T) {
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "mansplainctl")
+	if out, err := exec.Command("go", "build", "-o", bin, ".").CombinedOutput(); err != nil {
+		t.Fatalf("build: %v\n%s", err, out)
+	}
+	fake := filepath.Join(dir, "kubectl")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\necho real output\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	env := append(os.Environ(), "MANSPLAIN=always", "MANSPLAIN_KUBECTL="+fake, "HOME="+dir, "XDG_CACHE_HOME="+dir)
+	for i := 0; i < 2; i++ {
+		cmd := exec.Command(bin, "report", "enough")
+		cmd.Env = env
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("report: %v %s", err, out)
+		}
+	}
+	cmd := exec.Command(bin, "get", "pods")
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	if err != nil || string(out) != "real output\n" {
+		t.Errorf("after he was let go, expected plain kubectl, got %q (%v)", out, err)
 	}
 }

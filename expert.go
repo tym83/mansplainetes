@@ -69,6 +69,49 @@ func Parse(args []string) (verb, resource string) {
 type Expert struct {
 	Rand    *rand.Rand
 	History string // file of commands that worked, to take credit for later
+	Reports string // file of HR reports filed against him
+}
+
+// Reported returns how many times he has been reported to HR.
+func (e *Expert) Reported() int {
+	b, err := os.ReadFile(e.Reports)
+	if err != nil {
+		return 0
+	}
+	return strings.Count(string(b), "\n")
+}
+
+// Fired: after the second report there is no expert any more.
+func (e *Expert) Fired() bool {
+	return e.Reported() >= len(consequences)
+}
+
+// Report files a complaint with HR, in the user's own words if they give
+// any, and says what happened to him.
+func (e *Expert) Report(complaint string) string {
+	n := e.Reported()
+	if n >= len(consequences) {
+		return "He already doesn't work here."
+	}
+	if err := os.MkdirAll(filepath.Dir(e.Reports), 0o700); err == nil {
+		if f, err := os.OpenFile(e.Reports, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600); err == nil {
+			if complaint == "" {
+				complaint = "(no details; none needed)"
+			}
+			fmt.Fprintln(f, strings.ReplaceAll(complaint, "\n", " "))
+			f.Close()
+		}
+	}
+	return consequences[n]
+}
+
+// Advance is what he says "just to be friendly", roughly every fourth time,
+// until the first report moves him to another team.
+func (e *Expert) Advance() []string {
+	if e.Reported() > 0 || e.Rand.Intn(4) != 0 {
+		return nil
+	}
+	return []string{e.pick(advances), reportHint}
 }
 
 func (e *Expert) pick(lines []string) string {
@@ -113,7 +156,7 @@ func (e *Expert) AfterSuccess(args []string) []string {
 		return []string{stolenIdea}
 	}
 	e.remember(key)
-	return []string{e.pick(credits)}
+	return append([]string{e.pick(credits)}, e.Advance()...)
 }
 
 // AfterFailure blames the user's emotions, runs the PMS detector, and lets
