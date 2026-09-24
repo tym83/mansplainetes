@@ -40,7 +40,7 @@ var explanations = map[string]string{
 	"rollout":      "a rollout is when you roll it out. I pretty much invented the term.",
 	"edit":         "editing live objects? I'd never. Well, I would, but I know what I'm doing.",
 	"port-forward": "port forwarding forwards ports. Forward. Ports. Are you following?",
-	"top":          "`top` shows who's on top. Usually it's my pods.",
+	"top":          "`top` shows who's working hardest. Usually it's my pods.",
 	"config":       "kubeconfig is the config for kube. I could draw you a diagram.",
 	"version":      "the version is the version. Mine is always newer.",
 	"label":        "labels are like sticky notes. I use them to label other people's ideas as mine.",
@@ -114,11 +114,11 @@ const unknownCause = "I have no idea why, but it was definitely something I did.
 // comes with the way out.
 var advances = []string{
 	"You should smile more when you type `apply`.",
-	"Nice YAML. Is that indentation natural?",
+	"Nice YAML. Did you do the indentation yourself, or did someone help you?",
 	"We should grab a coffee sometime, and I'll explain Helm to you. Just the two of us.",
 	"Working late? Me too. Want me to walk you to your pod?",
 	"Are you seeing anyone? Asking for the scheduler.",
-	"Your namespace or mine?",
+	"We should pair on your namespace sometime. Just the two of us.",
 	"I noticed you were online at 23:40 yesterday. Just noticing.",
 }
 
@@ -133,7 +133,7 @@ var consequences = []string{
 }
 
 // winks decorate every advance, because he thinks it helps.
-var winks = []string{"😏", "😉", "👀", "🌹", "☕", "🥂", "😘", "🤙", "💅", "🙃", "✨", "🍷", "🙈", "😜", "💋", "🫦"}
+var winks = []string{"😏", "😉", "👀", "🌹", "☕", "🥂", "😘", "🤙", "💅", "🙃", "✨", "🍷", "🙈", "😜", "🤓", "😬"}
 
 // greetings sometimes come first, stretched out.
 var greetings = []string{"heyyy 👋", "psst 👀", "hiii 🙈", "so... 😏", "hey you~"}

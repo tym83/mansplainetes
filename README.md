@@ -39,8 +39,8 @@ Anyway. Deep breaths.
 - **Takes credit** when a command works, and when you run something that
   already worked, remembers it as his idea.
 - **Is "just being friendly"** now and then, with far too many emoji:
-  "hiii 🙈 Your namespace or mine? 🥂😏😏☕", then "...you there? 🥺👉👈" when
-  you don't answer. Every such line comes with the way out.
+  "hiii 🙈 We should pair on your namespace sometime. Just the two of us. 🥂😏😏☕",
+  then "...you there? 🥺👉👈" when you don't answer. Every such line comes with the way out.
 - **Blames your emotions** when a command fails, runs the PMS detector, and
   then the real cause comes out: the RBAC he wrote from memory, the token he
   gave you that expired, the kubeconfig he pointed at his laptop.
