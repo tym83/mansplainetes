@@ -202,7 +202,7 @@ func TestAdvancesStopAfterHR(t *testing.T) {
 	if advances == 0 {
 		t.Fatal("never tried to be \"friendly\"")
 	}
-	if !strings.Contains(e.Report(""), "legacy Jenkins") {
+	if msg, ok := e.Report(""); !ok || !strings.Contains(msg, "legacy Jenkins") {
 		t.Error("first report had no consequence")
 	}
 	for i := 0; i < 200; i++ {
@@ -213,10 +213,10 @@ func TestAdvancesStopAfterHR(t *testing.T) {
 	if e.Fired() {
 		t.Error("fired after one report; HR is never that fast")
 	}
-	if !strings.Contains(e.Report(""), "let him go") || !e.Fired() {
+	if msg, ok := e.Report(""); !ok || !strings.Contains(msg, "let him go") || !e.Fired() {
 		t.Error("second report did not end it")
 	}
-	if e.Report("") != "He already doesn't work here." {
+	if msg, _ := e.Report(""); msg != "He doesn't work here anymore." {
 		t.Error("third report")
 	}
 }
@@ -319,6 +319,18 @@ func TestIdeasSurviveLegacyLongLinesAndStayBounded(t *testing.T) {
 	}
 	if n := len(e.ideas()); n != maxIdeas {
 		t.Errorf("ideas file has %d entries, want %d", n, maxIdeas)
+	}
+}
+
+func TestReportWithoutCacheDirIsNotFiled(t *testing.T) {
+	e := &Expert{Rand: rand.New(rand.NewSource(1))}
+	msg, ok := e.Report("he did it again")
+	if ok || !strings.Contains(msg, "could not file") || strings.Contains(msg, "HR has received") {
+		t.Errorf("claimed a report it could not file: %v %q", ok, msg)
+	}
+	e.Reports = filepath.Join(t.TempDir(), "missing", "\x00", "hr")
+	if _, ok := e.Report(""); ok {
+		t.Error("an unwritable report was claimed filed")
 	}
 }
 
@@ -436,5 +448,33 @@ func TestSilentMeansNothingOnDisk(t *testing.T) {
 		if b, _ := os.ReadFile(f); strings.Contains(string(b), "s3cr3t") || strings.Contains(string(b), "pods") {
 			t.Errorf("%s holds the command: %q", f, b)
 		}
+	}
+}
+
+func TestReportOnlyAsFirstWordAndNotWhenOff(t *testing.T) {
+	h := newHarness(t)
+	h.fake("echo \"kubectl $*\"\n")
+	if r := h.run([]string{"MANSPLAIN=off"}, "report", "x"); r.stdout != "kubectl report x\n" {
+		t.Errorf("MANSPLAIN=off did not reach the kubectl report plugin: %+v", r)
+	}
+	if r := h.run([]string{"MANSPLAIN="}, "-n", "x", "report"); r.stdout != "kubectl -n x report\n" {
+		t.Errorf("report not in first position was hijacked: %+v", r)
+	}
+	if r := h.run([]string{"MANSPLAIN="}, "report"); !strings.Contains(r.stdout, "HR has received") || r.code != 0 {
+		t.Errorf("report: %+v", r)
+	}
+}
+
+func TestReportFailsHonestlyWithoutCache(t *testing.T) {
+	h := newHarness(t)
+	h.fake("echo ok\n")
+	// A regular file where the cache directory should be.
+	blocked := filepath.Join(h.home, "blocked")
+	if err := os.WriteFile(blocked, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r := h.run([]string{"XDG_CACHE_HOME=" + blocked, "HOME=" + blocked}, "report")
+	if r.code == 0 || strings.Contains(r.stdout, "HR has received") {
+		t.Errorf("claimed success: %+v", r)
 	}
 }

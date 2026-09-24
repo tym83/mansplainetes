@@ -45,14 +45,20 @@ func run(args []string) int {
 	if kubectl == "" {
 		kubectl = "kubectl"
 	}
+	off := os.Getenv("MANSPLAIN") == "off"
 	expert := newExpert()
 	// The user can file a complaint whenever they have had enough, with or
 	// without saying what happened: mansplainctl report [what he did].
-	if len(args) >= 1 && args[0] == "report" {
-		fmt.Println(expert.Report(strings.Join(args[1:], " ")))
+	// With MANSPLAIN=off, "report" goes to kubectl like everything else.
+	if !off && len(args) >= 1 && args[0] == "report" {
+		msg, ok := expert.Report(strings.Join(args[1:], " "))
+		fmt.Println(msg)
+		if !ok {
+			return 1
+		}
 		return 0
 	}
-	talk := shouldTalk() && !expert.Fired()
+	talk := !off && shouldTalk() && !expert.Fired()
 	say := func(lines []string) {
 		for _, l := range lines {
 			fmt.Fprintf(os.Stderr, "\033[3;36m%s\033[0m\n", l)

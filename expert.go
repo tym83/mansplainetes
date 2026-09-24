@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -159,22 +160,39 @@ func (e *Expert) Fired() bool {
 }
 
 // Report files a complaint with HR, in the user's own words if they give
-// any, and says what happened to him.
-func (e *Expert) Report(complaint string) string {
+// any, and says what happened to him. It returns false when the report
+// could not be filed, in which case nothing happened to him.
+func (e *Expert) Report(complaint string) (string, bool) {
 	n := e.Reported()
 	if n >= len(consequences) {
-		return "He already doesn't work here."
+		return "He doesn't work here anymore.", true
 	}
-	if err := os.MkdirAll(filepath.Dir(e.Reports), 0o700); err == nil {
-		if f, err := os.OpenFile(e.Reports, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600); err == nil {
-			if complaint == "" {
-				complaint = "(no details; none needed)"
-			}
-			fmt.Fprintln(f, strings.ReplaceAll(complaint, "\n", " "))
-			f.Close()
-		}
+	if err := e.file(complaint); err != nil {
+		return "HR could not file your report: " + err.Error() + ". Nothing happened to him. " +
+			"MANSPLAIN=off silences him in the meantime.", false
 	}
-	return consequences[n]
+	return consequences[n], true
+}
+
+func (e *Expert) file(complaint string) error {
+	if e.Reports == "" {
+		return errors.New("there is no user cache directory to keep it in")
+	}
+	if err := os.MkdirAll(filepath.Dir(e.Reports), 0o700); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(e.Reports, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+	if err != nil {
+		return err
+	}
+	if complaint == "" {
+		complaint = "(no details; none needed)"
+	}
+	_, werr := fmt.Fprintln(f, strings.ReplaceAll(complaint, "\n", " "))
+	if cerr := f.Close(); werr == nil {
+		werr = cerr
+	}
+	return werr
 }
 
 // Advance is what he says "just to be friendly", roughly every fourth time,
