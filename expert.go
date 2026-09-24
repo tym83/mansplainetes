@@ -162,11 +162,23 @@ func (e *Expert) Before(args []string) []string {
 		}
 		text = fmt.Sprintf(text, values...)
 	}
-	out = append(out, e.pick(openers)+" "+text)
+	out = append(out, joinOpener(e.pick(openers), text))
 	if e.Rand.Intn(6) == 0 {
 		out = append(out, e.pick(pronunciations))
 	}
 	return out
+}
+
+// joinOpener starts a new sentence with a capital letter after an opener
+// that ends one ("Great question you didn't ask.").
+func joinOpener(opener, text string) string {
+	if strings.HasSuffix(opener, ".") || strings.HasSuffix(opener, ":") {
+		if r := []rune(text); len(r) > 0 && r[0] >= 'a' && r[0] <= 'z' {
+			r[0] -= 'a' - 'A'
+			text = string(r)
+		}
+	}
+	return opener + " " + text
 }
 
 // AfterSuccess takes credit, and notices when the user repeats something

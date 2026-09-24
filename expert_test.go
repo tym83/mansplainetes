@@ -200,3 +200,16 @@ func TestFiredMeansSilence(t *testing.T) {
 		t.Errorf("after he was let go, expected plain kubectl, got %q (%v)", out, err)
 	}
 }
+
+func TestOpenerCapitalization(t *testing.T) {
+	for _, tc := range [][3]string{
+		{"Great question you didn't ask.", "the version is the version.", "Great question you didn't ask. The version is the version."},
+		{"Okay, let me break this down for you:", "declarative configuration...", "Okay, let me break this down for you: Declarative configuration..."},
+		{"Well, actually,", "the version is the version.", "Well, actually, the version is the version."},
+		{"Great question you didn't ask.", "`get` is for getting things.", "Great question you didn't ask. `get` is for getting things."},
+	} {
+		if got := joinOpener(tc[0], tc[1]); got != tc[2] {
+			t.Errorf("got %q, want %q", got, tc[2])
+		}
+	}
+}
