@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -55,12 +56,42 @@ func TestBeforeExplainsTheUsersOwnCommand(t *testing.T) {
 		t.Errorf("did not explain get pods back: %q", lines)
 	}
 	lines = strings.Join(expert(t).Before([]string{"frobnicate"}), "\n")
-	if !strings.Contains(lines, "`frobnicate`. Let me explain it anyway") {
+	if !strings.Contains(lines, "here's `frobnicate`, and I'll explain it anyway") {
 		t.Errorf("unknown verbs must still be explained: %q", lines)
 	}
 	many := []string{"get", "pods", "-n", "a", "-o", "wide", "-l", "x=y"}
 	if lines := expert(t).Before(many); !strings.Contains(strings.Join(lines, " "), "flag") {
 		t.Errorf("long command was not interrupted: %v", lines)
+	}
+}
+
+func TestBeforeSpeaksInPlurals(t *testing.T) {
+	for args, want := range map[string]string{
+		"get pod":            "You're getting pods.",
+		"get po/x":           "You're getting pods.",
+		"delete deploy/nope": "deleting deployments? Bold.",
+		"describe svc api":   "describes services.",
+		"get ns":             "You're getting namespaces.",
+		"get widgets":        "You're getting widgets.",
+		"get":                "You're getting things.",
+	} {
+		lines := strings.Join(expert(t).Before(strings.Fields(args)), "\n")
+		if !strings.Contains(strings.ToLower(lines), strings.ToLower(want)) {
+			t.Errorf("%s: got %q, want %q", args, lines, want)
+		}
+	}
+}
+
+func TestFallbackExplanationReadsAfterEveryOpener(t *testing.T) {
+	text := fmt.Sprintf(fallbackExplanation, "frobnicate")
+	for _, o := range openers {
+		got := joinOpener(o, text)
+		if strings.Contains(got, "`frobnicate`. Let") {
+			t.Errorf("ungrammatical: %q", got)
+		}
+		if strings.HasSuffix(o, ".") && !strings.HasPrefix(strings.TrimPrefix(got, o+" "), "There's") {
+			t.Errorf("not capitalized after a full stop: %q", got)
+		}
 	}
 }
 

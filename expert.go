@@ -65,6 +65,51 @@ func Parse(args []string) (verb, resource string) {
 	return verb, resource
 }
 
+// plurals turns kubectl's short and singular resource names into words he
+// can say out loud: "deleting deployments", not "deleting deploy".
+var plurals = map[string]string{
+	"po": "pods", "pod": "pods",
+	"deploy": "deployments", "deployment": "deployments",
+	"svc": "services", "service": "services",
+	"ns": "namespaces", "namespace": "namespaces",
+	"no": "nodes", "node": "nodes",
+	"sts": "statefulsets", "statefulset": "statefulsets",
+	"ds": "daemonsets", "daemonset": "daemonsets",
+	"rs": "replicasets", "replicaset": "replicasets",
+	"rc": "replicationcontrollers", "replicationcontroller": "replicationcontrollers",
+	"cm": "configmaps", "configmap": "configmaps",
+	"secret": "secrets",
+	"ing":    "ingresses", "ingress": "ingresses",
+	"pvc": "persistentvolumeclaims", "persistentvolumeclaim": "persistentvolumeclaims",
+	"pv": "persistentvolumes", "persistentvolume": "persistentvolumes",
+	"sa": "serviceaccounts", "serviceaccount": "serviceaccounts",
+	"ep": "endpoints",
+	"ev": "events", "event": "events",
+	"job": "jobs",
+	"cj":  "cronjobs", "cronjob": "cronjobs",
+	"hpa": "horizontalpodautoscalers", "horizontalpodautoscaler": "horizontalpodautoscalers",
+	"pdb": "poddisruptionbudgets", "poddisruptionbudget": "poddisruptionbudgets",
+	"netpol": "networkpolicies", "networkpolicy": "networkpolicies",
+	"crd": "customresourcedefinitions", "crds": "customresourcedefinitions",
+	"customresourcedefinition": "customresourcedefinitions",
+	"sc":                       "storageclasses", "storageclass": "storageclasses",
+	"limits": "limitranges", "limitrange": "limitranges",
+	"quota": "resourcequotas", "resourcequota": "resourcequotas",
+	"role": "roles", "rolebinding": "rolebindings",
+	"clusterrole": "clusterroles", "clusterrolebinding": "clusterrolebindings",
+	"csr": "certificatesigningrequests", "certificatesigningrequest": "certificatesigningrequests",
+	"lease": "leases",
+}
+
+// Plural returns a readable plural for a resource name; names it does not
+// know are kept as typed.
+func Plural(resource string) string {
+	if p, ok := plurals[strings.ToLower(resource)]; ok {
+		return p
+	}
+	return resource
+}
+
 // Expert is the colleague nobody asked for.
 type Expert struct {
 	Rand    *rand.Rand
@@ -148,6 +193,7 @@ func (e *Expert) Before(args []string) []string {
 	if resource == "" {
 		resource = "things"
 	}
+	resource = Plural(resource)
 	var out []string
 	if len(args) > 6 {
 		out = append(out, e.pick(interruptions))

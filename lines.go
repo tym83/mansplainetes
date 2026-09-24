@@ -50,7 +50,7 @@ var explanations = map[string]string{
 }
 
 // fallbackExplanation is used for verbs without their own explanation.
-const fallbackExplanation = "`%s`. Let me explain it anyway, since you clearly need it."
+const fallbackExplanation = "there's `%s`, and I'll explain it anyway, since you clearly need it."
 
 // interruptions are said before commands with many arguments.
 var interruptions = []string{
