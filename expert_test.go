@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func expert(t *testing.T) *Expert {
@@ -323,6 +324,17 @@ func TestIdeasSurviveLegacyLongLinesAndStayBounded(t *testing.T) {
 	}
 }
 
+func TestTailKeepsOnlyTheEnd(t *testing.T) {
+	var tb tailBuffer
+	for i := 0; i < 100; i++ {
+		fmt.Fprintf(&tb, "%s\n", strings.Repeat("y", 1000))
+	}
+	fmt.Fprint(&tb, "Error from server (Forbidden)")
+	if len(tb.String()) != tailSize || !strings.HasSuffix(tb.String(), "(Forbidden)") {
+		t.Errorf("tail is %d bytes", len(tb.String()))
+	}
+}
+
 func TestReportWithoutCacheDirIsNotFiled(t *testing.T) {
 	e := &Expert{Rand: rand.New(rand.NewSource(1))}
 	msg, ok := e.Report("he did it again")
@@ -469,6 +481,76 @@ func TestSilentMeansNothingOnDisk(t *testing.T) {
 		if b, _ := os.ReadFile(f); strings.Contains(string(b), "s3cr3t") || strings.Contains(string(b), "pods") {
 			t.Errorf("%s holds the command: %q", f, b)
 		}
+	}
+}
+
+func TestKubectlGetsTheRealStderrWhenSilent(t *testing.T) {
+	h := newHarness(t)
+	h.fake("if [ -p /dev/fd/2 ]; then echo pipe; else echo direct; fi\n")
+	errFile, err := os.Create(filepath.Join(t.TempDir(), "stderr"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer errFile.Close()
+	for mode, want := range map[string]string{"MANSPLAIN=": "direct\n", "MANSPLAIN=off": "direct\n", "MANSPLAIN=always": "pipe\n"} {
+		cmd := exec.Command(h.bin, "get", "pods")
+		cmd.Env = append(append([]string(nil), h.env...), mode)
+		cmd.Stderr = errFile
+		out, err := cmd.Output()
+		if err != nil || string(out) != want {
+			t.Errorf("%s: kubectl saw stderr as %q (%v), want %q", mode, out, err, want)
+		}
+	}
+}
+
+func TestKilledBySignalExitsWith128PlusSignal(t *testing.T) {
+	h := newHarness(t)
+	h.fake("kill -TERM $$\nsleep 5\n")
+	for _, mode := range []string{"MANSPLAIN=", "MANSPLAIN=always"} {
+		if r := h.run([]string{mode}, "get", "pods"); r.code != 128+15 {
+			t.Errorf("%s: exit code %d, want 143", mode, r.code)
+		}
+	}
+}
+
+func TestBackgroundChildDoesNotHangHim(t *testing.T) {
+	h := newHarness(t)
+	h.fake("sleep 5 >/dev/null &\necho started\n")
+	start := time.Now()
+	r := h.run([]string{"MANSPLAIN=always"}, "get", "pods")
+	if took := time.Since(start); took > 4*time.Second {
+		t.Errorf("waited %v for a background process holding stderr", took)
+	}
+	if r.code != 0 || r.stdout != "started\n" {
+		t.Errorf("%+v", r)
+	}
+}
+
+func TestRefusesToRunItself(t *testing.T) {
+	h := newHarness(t)
+	dir := t.TempDir()
+	if err := os.Symlink(h.bin, filepath.Join(dir, "kubectl")); err != nil {
+		t.Fatal(err)
+	}
+	var env []string
+	for _, kv := range h.env {
+		if !strings.HasPrefix(kv, "PATH=") {
+			env = append(env, kv)
+		}
+	}
+	h.env = append(env, "PATH="+dir)
+	r := h.run(nil, "get", "pods")
+	if r.code != 1 || !strings.Contains(r.stderr, "resolves to mansplainctl itself") {
+		t.Errorf("%+v", r)
+	}
+}
+
+func TestDepthGuardStopsLoops(t *testing.T) {
+	h := newHarness(t)
+	h.fake("exec \"$LOOP_BIN\" \"$@\"\n")
+	r := h.run([]string{"LOOP_BIN=" + h.bin, "MANSPLAIN=always"}, "get", "pods")
+	if r.code != 1 || !strings.Contains(r.stderr, "called itself") {
+		t.Errorf("%+v", r)
 	}
 }
 
