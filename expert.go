@@ -26,12 +26,38 @@ import (
 )
 
 // flagsWithValues take the next argument as their value, so it is not
-// mistaken for the verb or the resource.
-var flagsWithValues = map[string]bool{
-	"-n": true, "--namespace": true, "--context": true, "--kubeconfig": true,
-	"--cluster": true, "--user": true, "-s": true, "--server": true, "--token": true,
-	"-o": true, "--output": true, "-l": true, "--selector": true, "-f": true, "--filename": true,
-	"-c": true, "--container": true, "--as": true,
+// mistaken for the verb or the resource. The --flag=value form needs no
+// entry: it is a single argument.
+var flagsWithValues = map[string]bool{}
+
+func init() {
+	for _, f := range []string{
+		// global
+		"-n", "--namespace", "--context", "--kubeconfig", "--cluster", "--user",
+		"-s", "--server", "--token", "--as", "--as-group", "--as-uid",
+		"--request-timeout", "-v", "--v", "--vmodule", "--log-file", "--log-dir",
+		"--certificate-authority", "--client-certificate", "--client-key",
+		"--username", "--password", "--tls-server-name", "--cache-dir",
+		"--profile", "--profile-output", "--log-flush-frequency",
+		// output and selection
+		"-o", "--output", "-l", "--selector", "-L", "--label-columns",
+		"--field-selector", "--sort-by", "--template", "--chunk-size",
+		"--subresource",
+		// input
+		"-f", "--filename", "-k", "--kustomize", "--field-manager", "--patch",
+		"--patch-file", "--type", "--prune-allowlist",
+		// containers, logs, exec, run, debug
+		"-c", "--container", "--image", "--image-pull-policy", "--restart",
+		"--env", "--labels", "--overrides", "--port", "--target", "--copy-to",
+		"--set-image", "--since", "--since-time", "--tail", "--limit-bytes",
+		"--pod-running-timeout", "--max-log-requests", "--address",
+		// waits and rollouts
+		"--timeout", "--for", "--replicas", "--current-replicas",
+		"--grace-period", "--to-revision", "--revision", "--resource-version",
+		"--max-unavailable", "--min-available",
+	} {
+		flagsWithValues[f] = true
+	}
 }
 
 // Parse finds the verb and the resource in a kubectl command line.

@@ -41,6 +41,15 @@ func TestParse(t *testing.T) {
 		{[]string{"--kubeconfig", "/tmp/k", "delete", "pod", "x"}, "delete", "pod"},
 		{[]string{"rollout", "status", "deploy/api"}, "rollout", ""},
 		{[]string{"exec", "-it", "p", "--", "sh"}, "exec", "p"},
+		{[]string{"--namespace=shop", "get", "svc"}, "get", "svc"},
+		{[]string{"-v", "6", "--request-timeout", "5s", "get", "nodes"}, "get", "nodes"},
+		{[]string{"--v=6", "--request-timeout=5s", "get", "nodes"}, "get", "nodes"},
+		{[]string{"--as-group", "devs", "--as-uid", "42", "get", "pods"}, "get", "pods"},
+		{[]string{"get", "-L", "app", "--sort-by", ".metadata.name", "pods"}, "get", "pods"},
+		{[]string{"--field-selector", "status.phase=Running", "get", "pods"}, "get", "pods"},
+		{[]string{"--client-key", "k.pem", "--password", "hunter2", "get", "cm"}, "get", "cm"},
+		{[]string{"run", "--image", "nginx", "web"}, "run", "web"},
+		{[]string{"--template={{.x}}", "-o=go-template", "get", "pods"}, "get", "pods"},
 		{nil, "", ""},
 	} {
 		v, r := Parse(tc.args)
