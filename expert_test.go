@@ -141,8 +141,15 @@ func TestAdvancesStopAfterHR(t *testing.T) {
 	for i := 0; i < 200; i++ {
 		if lines := e.Advance(); lines != nil {
 			advances++
-			if lines[1] != reportHint {
+			if lines[len(lines)-1] != reportHint {
 				t.Fatalf("an advance came without the way out: %v", lines)
+			}
+			found := false
+			for _, w := range winks {
+				found = found || strings.HasSuffix(lines[0], w)
+			}
+			if !found {
+				t.Fatalf("an advance without a wink: %q", lines[0])
 			}
 		}
 	}

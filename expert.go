@@ -111,7 +111,28 @@ func (e *Expert) Advance() []string {
 	if e.Reported() > 0 || e.Rand.Intn(4) != 0 {
 		return nil
 	}
-	return []string{e.pick(advances), reportHint}
+	line := e.pick(advances) + " " + e.winks()
+	if e.Rand.Intn(2) == 0 {
+		line = e.pick(greetings) + " " + line
+	}
+	out := []string{line}
+	if e.Rand.Intn(3) == 0 {
+		out = append(out, e.pick(followUps))
+	}
+	return append(out, reportHint)
+}
+
+// winks strings together two to four emoji; he likes to double up.
+func (e *Expert) winks() string {
+	var out strings.Builder
+	for i := 2 + e.Rand.Intn(3); i > 0; i-- {
+		w := e.pick(winks)
+		out.WriteString(w)
+		if e.Rand.Intn(3) == 0 {
+			out.WriteString(w)
+		}
+	}
+	return out.String()
 }
 
 func (e *Expert) pick(lines []string) string {

@@ -131,3 +131,17 @@ var consequences = []string{
 		"and he will not bother you personally again. He will keep explaining things, because HR says that is \"just his style\".",
 	"Second report received. HR has let him go. It's quiet now. kubectl will just run.",
 }
+
+// winks decorate every advance, because he thinks it helps.
+var winks = []string{"😏", "😉", "👀", "🌹", "☕", "🥂", "😘", "🤙", "💅", "🙃", "✨", "🍷", "🙈", "😜", "💋", "🫦"}
+
+// greetings sometimes come first, stretched out.
+var greetings = []string{"heyyy 👋", "psst 👀", "hiii 🙈", "so... 😏", "hey you~"}
+
+// followUps sometimes come after, when he gets no answer. He never gets one.
+var followUps = []string{
+	"...you there? 🥺👉👈",
+	"hello?? 👀👀",
+	"no reply? cute 😏",
+	"I'll take that as a maybe 😉😉",
+}
