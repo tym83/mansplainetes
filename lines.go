@@ -145,3 +145,11 @@ var followUps = []string{
 	"no reply? cute 😏",
 	"I'll take that as a maybe 😉😉",
 }
+
+// banner introduces him once, the first time he talks, so nobody mistakes
+// whose side the joke is on.
+var banner = []string{
+	"mansplainctl: a satire of mansplaining. He is the joke, not you.",
+	"He will explain your own commands, take credit for what works, and blame you for what doesn't. He is wrong every time.",
+	"Had enough? `mansplainctl report` (twice and he is gone). MANSPLAIN=off silences him; MANSPLAIN_ADVANCES=off stops only the \"friendliness\".",
+}

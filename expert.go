@@ -143,6 +143,23 @@ type Expert struct {
 	Rand    *rand.Rand
 	History string // hashes of commands that worked, to take credit for later
 	Reports string // file of HR reports filed against him
+	Seen    string // file that exists once he has introduced himself
+
+	NoAdvances bool // MANSPLAIN_ADVANCES=off: he explains, but never "just to be friendly"
+}
+
+// FirstRun reports whether this is the first time he talks to this user,
+// and remembers that it no longer is.
+func (e *Expert) FirstRun() bool {
+	if e.Seen == "" || os.MkdirAll(filepath.Dir(e.Seen), 0o700) != nil {
+		return false
+	}
+	f, err := os.OpenFile(e.Seen, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return false
+	}
+	f.Close()
+	return true
 }
 
 // Reported returns how many times he has been reported to HR.
@@ -198,7 +215,7 @@ func (e *Expert) file(complaint string) error {
 // Advance is what he says "just to be friendly", roughly every fourth time,
 // until the first report moves him to another team.
 func (e *Expert) Advance() []string {
-	if e.Reported() > 0 || e.Rand.Intn(4) != 0 {
+	if e.NoAdvances || e.Reported() > 0 || e.Rand.Intn(4) != 0 {
 		return nil
 	}
 	line := e.pick(advances) + " " + e.winks()

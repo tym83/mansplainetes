@@ -34,6 +34,7 @@ func expert(t *testing.T) *Expert {
 		Rand:    rand.New(rand.NewSource(1)),
 		History: filepath.Join(dir, "ideas"),
 		Reports: filepath.Join(dir, "hr"),
+		Seen:    filepath.Join(dir, "introduced"),
 	}
 }
 
@@ -334,6 +335,26 @@ func TestReportWithoutCacheDirIsNotFiled(t *testing.T) {
 	}
 }
 
+func TestAdvancesCanBeTurnedOff(t *testing.T) {
+	e := expert(t)
+	e.NoAdvances = true
+	for i := 0; i < 200; i++ {
+		if lines := e.AfterSuccess([]string{"get", strconv.Itoa(i)}); len(lines) != 1 {
+			t.Fatalf("MANSPLAIN_ADVANCES=off and still: %v", lines)
+		}
+	}
+}
+
+func TestFirstRunOnlyOnce(t *testing.T) {
+	e := expert(t)
+	if !e.FirstRun() || e.FirstRun() {
+		t.Error("the introduction must come exactly once")
+	}
+	if (&Expert{}).FirstRun() {
+		t.Error("no cache directory, no introduction to remember")
+	}
+}
+
 var (
 	buildOnce sync.Once
 	builtBin  string
@@ -448,6 +469,22 @@ func TestSilentMeansNothingOnDisk(t *testing.T) {
 		if b, _ := os.ReadFile(f); strings.Contains(string(b), "s3cr3t") || strings.Contains(string(b), "pods") {
 			t.Errorf("%s holds the command: %q", f, b)
 		}
+	}
+}
+
+func TestBannerOnce(t *testing.T) {
+	h := newHarness(t)
+	h.fake("echo ok\n")
+	first := h.run([]string{"MANSPLAIN=always"}, "get", "pods")
+	second := h.run([]string{"MANSPLAIN=always"}, "get", "pods")
+	if !strings.Contains(first.stderr, "satire of mansplaining") || !strings.Contains(first.stderr, "MANSPLAIN=off") {
+		t.Errorf("no introduction on the first run: %q", first.stderr)
+	}
+	if strings.Contains(second.stderr, "satire of mansplaining") {
+		t.Error("introduced himself twice")
+	}
+	if first.stdout != "ok\n" {
+		t.Errorf("banner leaked into stdout: %q", first.stdout)
 	}
 }
 

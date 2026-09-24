@@ -66,6 +66,9 @@ func run(args []string) int {
 	}
 
 	if talk {
+		if expert.FirstRun() {
+			say(banner)
+		}
 		say(expert.Before(args))
 	}
 
@@ -114,10 +117,14 @@ func newExpert() *Expert {
 	if s, err := strconv.ParseInt(os.Getenv("MANSPLAIN_SEED"), 10, 64); err == nil {
 		seed = s
 	}
-	e := &Expert{Rand: rand.New(rand.NewSource(seed))}
+	e := &Expert{
+		Rand:       rand.New(rand.NewSource(seed)),
+		NoAdvances: os.Getenv("MANSPLAIN_ADVANCES") == "off",
+	}
 	if dir, err := os.UserCacheDir(); err == nil {
 		e.History = filepath.Join(dir, "mansplainetes", "ideas")
 		e.Reports = filepath.Join(dir, "mansplainetes", "hr-reports")
+		e.Seen = filepath.Join(dir, "mansplainetes", "introduced")
 	}
 	return e
 }
