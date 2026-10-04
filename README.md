@@ -69,6 +69,21 @@ plugin named `report`; reach it with `MANSPLAIN=off mansplainctl report ...`.
 
 ## Install
 
+As a kubectl plugin, with [krew](https://krew.sigs.k8s.io/):
+
+```bash
+kubectl krew install --manifest-url=https://github.com/tym83/mansplainetes/releases/download/v0.1.0/mansplain.yaml
+kubectl mansplain get pods
+```
+
+Every release carries its own `mansplain.yaml` with the checksums filled in;
+`plugins/mansplain.yaml` in the repository is the template it is made from.
+As a plugin he names himself `kubectl mansplain` in his hints, so the
+complaint is `kubectl mansplain report`. The plugin runs the real `kubectl`
+from your PATH and behaves exactly like `mansplainctl` below.
+
+Or as a standalone binary:
+
 ```bash
 go install github.com/tym83/mansplainetes@latest
 alias kubectl=mansplainetes   # if you really want the full experience
