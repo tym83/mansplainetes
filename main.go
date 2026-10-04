@@ -81,9 +81,10 @@ func run(args []string) int {
 	}
 	// Nested calls come from scripts and plugins, not from the person.
 	talk := !off && depth == 0 && shouldTalk() && !expert.Fired()
+	name := commandName(os.Args[0])
 	say := func(lines []string) {
 		for _, l := range lines {
-			fmt.Fprintf(os.Stderr, "\033[3;36m%s\033[0m\n", l)
+			fmt.Fprintf(os.Stderr, "\033[3;36m%s\033[0m\n", asInvoked(l, name))
 		}
 	}
 
