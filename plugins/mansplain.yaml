@@ -1,0 +1,74 @@
+# krew plugin manifest for `kubectl mansplain`.
+#
+# The sha256 values below are placeholders: the release workflow
+# (.github/workflows/release.yml) builds the archives on a v* tag, fills in
+# their checksums with hack/krew-release.sh and attaches the result to the
+# GitHub release as mansplain.yaml. Install from there:
+#   kubectl krew install --manifest-url=https://github.com/tym83/mansplainetes/releases/download/v0.1.0/mansplain.yaml
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: mansplain
+spec:
+  version: v0.1.0
+  homepage: https://github.com/tym83/mansplainetes
+  shortDescription: kubectl with an unsolicited expert (satire)
+  description: |
+    kubectl with a colleague you did not ask for: he explains your own
+    commands back to you, takes credit for what works and blames your
+    emotions for what doesn't. A satire of mansplaining; the joke is on him.
+    kubectl runs unchanged with your arguments, stdin and stdout, and exit
+    codes pass through. He only talks on stderr, and only at a terminal, so
+    pipes, scripts and CI get plain kubectl.
+  caveats: |
+    Requires kubectl on PATH. Silence him with MANSPLAIN=off; file a
+    complaint with `kubectl mansplain report` (twice and he is gone).
+  platforms:
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: amd64
+      uri: https://github.com/tym83/mansplainetes/releases/download/v0.1.0/mansplain-v0.1.0-darwin-amd64.tar.gz
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      bin: kubectl-mansplain
+      files:
+        - from: kubectl-mansplain
+          to: .
+        - from: LICENSE
+          to: .
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: arm64
+      uri: https://github.com/tym83/mansplainetes/releases/download/v0.1.0/mansplain-v0.1.0-darwin-arm64.tar.gz
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      bin: kubectl-mansplain
+      files:
+        - from: kubectl-mansplain
+          to: .
+        - from: LICENSE
+          to: .
+    - selector:
+        matchLabels:
+          os: linux
+          arch: amd64
+      uri: https://github.com/tym83/mansplainetes/releases/download/v0.1.0/mansplain-v0.1.0-linux-amd64.tar.gz
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      bin: kubectl-mansplain
+      files:
+        - from: kubectl-mansplain
+          to: .
+        - from: LICENSE
+          to: .
+    - selector:
+        matchLabels:
+          os: linux
+          arch: arm64
+      uri: https://github.com/tym83/mansplainetes/releases/download/v0.1.0/mansplain-v0.1.0-linux-arm64.tar.gz
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      bin: kubectl-mansplain
+      files:
+        - from: kubectl-mansplain
+          to: .
+        - from: LICENSE
+          to: .
