@@ -1,0 +1,38 @@
+name: e2e
+
+# The admission webhook chart on a real cluster: kind, the image built
+# from this commit, both certificate modes.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  webhook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        certs: [helm, cert-manager]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Build the image
+        run: docker build -t mansplainetes-webhook:e2e .
+      - uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
+        with:
+          cluster_name: e2e
+      - name: Load the image
+        run: kind load docker-image mansplainetes-webhook:e2e --name e2e
+      - name: Run
+        run: hack/e2e-webhook.sh ${{ matrix.certs }}
+      - name: Webhook logs
+        if: failure()
+        run: |
+          kubectl -n mansplainetes get all
+          kubectl -n mansplainetes logs deploy/mansplainetes --tail=200 || true
+          kubectl get validatingwebhookconfiguration mansplainetes -o yaml || true
