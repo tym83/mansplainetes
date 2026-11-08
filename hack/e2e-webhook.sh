@@ -174,6 +174,9 @@ if [ "$mode" = helm ]; then
 	ca=$(sum 'ca\.crt')
 	bundle=$(kubectl get validatingwebhookconfiguration "$release" -o jsonpath='{.webhooks[0].clientConfig.caBundle}')
 	helm upgrade "$release" "$root/charts/mansplainetes" "${chart_args[@]}" --set quietFor=11m
+	# quietFor changes the pod template: wait for the new pod, or the next
+	# request can reach no webhook at all (failurePolicy Ignore) and stay silent.
+	kubectl -n "$ns" rollout status deploy "$release" --timeout=2m
 	[ "$crt" = "$(sum 'tls\.crt')" ] && ok "tls.crt kept across upgrade" || bad "tls.crt changed on upgrade"
 	[ "$ca" = "$(sum 'ca\.crt')" ] && ok "ca.crt kept across upgrade" || bad "ca.crt changed on upgrade"
 	[ "$bundle" = "$(kubectl get validatingwebhookconfiguration "$release" -o jsonpath='{.webhooks[0].clientConfig.caBundle}')" ] &&
