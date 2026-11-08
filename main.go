@@ -35,6 +35,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/term"
 )
 
 const (
@@ -206,8 +208,13 @@ func shouldTalk() bool {
 	case "always":
 		return true
 	}
-	info, err := os.Stderr.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
+	return terminal(os.Stderr)
+}
+
+// terminal reports a real terminal. A character device is not enough:
+// /dev/null is one too, and "2>/dev/null" is a script, not a person.
+func terminal(f *os.File) bool {
+	return term.IsTerminal(int(f.Fd()))
 }
 
 func newExpert() *Expert {

@@ -96,7 +96,7 @@ The binary is called `mansplainetes` when installed this way; build it as
 
 - kubectl runs unchanged, with your arguments, stdin and stdout. Exit codes pass through.
 - Apart from `report`, he only ever talks on stderr, and only when stderr is
-  a terminal, so pipes, scripts and CI are untouched. When he is silent,
+  a terminal (`2>/dev/null` is not one), so pipes, scripts and CI are untouched. When he is silent,
   kubectl gets your stderr directly, so it and its credential plugins still
   see a terminal.
 - SIGINT, SIGTERM and SIGHUP are passed on to kubectl. If kubectl is killed
