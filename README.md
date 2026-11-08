@@ -168,6 +168,39 @@ object is mansplained to the same person at most once in 10 minutes. The
 webhook has `failurePolicy: Ignore` and no access to the API server. Details
 are in the [chart README](charts/mansplainetes/README.md).
 
+## On a booting node
+
+[kuberoot](https://github.com/kuberoot-dev/kuberoot) builds Kubernetes
+distributions that boot straight on hardware, with `kinit` as PID 1. The
+Mansplainetes distribution is kuberoot's edge distribution with one more
+service, `mansplainetes-boot`, started first on every node. It reads the
+node's services from kinit's control socket (only `GET /v1/services`) and
+narrates the boot on the console as it happens:
+
+```text
+mansplainetes: a satire of mansplaining. He is the joke, not you.
+He will now narrate this node's boot from kinit's own service list, and take credit for it.
+Well, actually, the service containerd is running now, pid 412. That was my idea.
+kubelet is waiting for what it depends on. Patience. I have plenty.
+kubelet exited (exit status 1), restart #1. It's just being emotional. Running PMS detector... detected: PMS.
+PMS: Probably My Setup. I wrote its flags from memory.
+kubelet is back up after 1 restarts. See? I fixed it.
+All 6 services are running, 1m14s after power-on. You're welcome.
+```
+
+Service names, states, PIDs, restart counts and exit reasons are kinit's;
+the credit and the confessions are his. He keeps quiet on installer media,
+never exits (kinit would count that as a restart), and `MANSPLAIN=off` in
+the service's environment silences him. Nothing in kuberoot's core changes:
+`distro/kuberoot/mansplainetes` holds the profile overlay and the image
+hook, and `hack/kuberoot.sh` builds it with kuberoot's own `hack/hetzner.sh`
+at the commit in `.upstream-version`:
+
+```bash
+hack/kuberoot.sh build amd64
+hack/kuberoot.sh media amd64
+```
+
 ## See also
 
 - [Kyvernetria](https://github.com/tym83/kyvernetria), the serious-with-a-wink
