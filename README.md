@@ -133,6 +133,41 @@ Nothing but `hr-reports` is ever written unless he is talking to you:
   `mansplainctl report`.
 - `introduced`: an empty file that means he has introduced himself.
 
+## Server mode
+
+He also comes as an admission webhook, for everyone who changes things in a
+namespace, whatever client they use: kubectl, k9s, Lens, Argo CD. He talks
+through admission warnings, the `Warning:` lines every client already
+shows, and always allows the request, so the cluster behaves exactly as it
+would without him:
+
+```text
+$ kubectl -n shop apply -f web.yaml
+Warning: Well, actually, you're creating deployment/web in shop. Creating is when there wasn't one, and then there is.
+Warning: PMS: Probably My Setup. deployment/web runs a single replica. I call that focus.
+Warning: PMS: Probably My Setup. container "web" has no memory limit. Limits are for people who don't trust their code.
+deployment.apps/web created
+```
+
+The PMS detector here goes by facts the object itself shows: no memory
+limit, no resource requests, an image with no tag or `:latest` and no
+digest, no readiness or liveness probe, a single replica. On an update he
+re-narrates which fields changed and takes credit for a new replica count
+or image.
+
+```bash
+helm install mansplainetes oci://ghcr.io/tym83/charts/mansplainetes \
+  --version <version> --namespace mansplainetes --create-namespace
+kubectl label namespace shop mansplainetes.dev/mode=on
+```
+
+It is off until a namespace is labelled. Nodes, controllers and service
+accounts never hear him (service accounts can be opted in), system
+namespaces, leases, events and Secrets are never looked at, and the same
+object is mansplained to the same person at most once in 10 minutes. The
+webhook has `failurePolicy: Ignore` and no access to the API server. Details
+are in the [chart README](charts/mansplainetes/README.md).
+
 ## See also
 
 - [Kyvernetria](https://github.com/tym83/kyvernetria), the serious-with-a-wink
