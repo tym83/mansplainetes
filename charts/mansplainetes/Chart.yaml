@@ -1,0 +1,13 @@
+apiVersion: v2
+name: mansplainetes
+description: Admission webhook that mansplains every change back to the person who made it, as warnings. Never changes what the cluster does.
+type: application
+# Set from the git tag at release.
+version: 0.0.0
+appVersion: v0.0.0
+home: https://github.com/tym83/mansplainetes
+sources:
+  - https://github.com/tym83/mansplainetes
+annotations:
+  licenses: Apache-2.0
+kubeVersion: ">=1.19.0-0"

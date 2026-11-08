@@ -1,0 +1,65 @@
+# Namespaces hear him only when labelled:
+#   kubectl label namespace shop mansplainetes.dev/mode=on
+# Nothing is labelled after install, so nothing happens until you opt in.
+namespaceLabel:
+  key: mansplainetes.dev/mode
+  value: "on"
+
+# Namespaces he never comments on, labelled or not. The release namespace
+# is always added.
+excludedNamespaces:
+  - kube-system
+  - kube-public
+  - kube-node-lease
+
+# What he comments on. Secrets are deliberately absent: he never sees them.
+rules:
+  - apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods", "services"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+  - apiGroups: ["apps"]
+    apiVersions: ["v1"]
+    resources: ["deployments", "deployments/scale", "statefulsets", "statefulsets/scale", "daemonsets", "replicasets"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+  - apiGroups: ["batch"]
+    apiVersions: ["v1"]
+    resources: ["jobs", "cronjobs"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+
+# How long he keeps quiet about the same object to the same person.
+quietFor: 10m
+
+# Talk to service accounts too (Argo CD, Flux, operators). Those in
+# kube-system never hear him.
+serviceAccounts: false
+
+# Silence him without uninstalling: every request is allowed, nothing said.
+off: false
+
+image:
+  repository: ghcr.io/tym83/mansplainetes-webhook
+  # Defaults to the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# TLS for the webhook. Without cert-manager the chart generates a CA and a
+# certificate once and keeps them across upgrades.
+certManager:
+  enabled: false
+
+timeoutSeconds: 3
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 64Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
