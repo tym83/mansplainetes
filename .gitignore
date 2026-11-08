@@ -1,1 +1,7 @@
 _output/
+/dist/
+# binaries from go build
+/mansplainetes
+/mansplainctl
+/kubectl-mansplain
+/mansplainetes-webhook
