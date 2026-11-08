@@ -1,0 +1,15 @@
+Mansplainetes is installed, and nobody hears him yet.
+
+He talks only in namespaces labelled {{ .Values.namespaceLabel.key }}={{ .Values.namespaceLabel.value }}:
+
+  kubectl label namespace <namespace> {{ .Values.namespaceLabel.key }}={{ .Values.namespaceLabel.value }}
+
+Then any change a person makes there (kubectl, k9s, Lens, Argo CD) comes back with
+"Warning:" lines: your change, re-narrated, credit taken, and the PMS detector
+(Probably My Setup) on facts the object really shows. He always allows the
+request; the cluster behaves exactly as without him.
+
+This is satire. He is the joke, not you.
+
+Silence one namespace: kubectl label namespace <namespace> {{ .Values.namespaceLabel.key }}-
+Silence him everywhere: helm upgrade {{ .Release.Name }} --reuse-values --set off=true

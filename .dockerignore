@@ -1,0 +1,7 @@
+_output
+dist
+charts
+/mansplainetes
+/mansplainctl
+/kubectl-mansplain
+/mansplainetes-webhook
