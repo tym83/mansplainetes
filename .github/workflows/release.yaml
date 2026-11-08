@@ -5,10 +5,14 @@ name: release
 # fill their sha256 into the krew manifest and publish both as a GitHub
 # release, so the plugin installs with
 #   kubectl krew install --manifest-url=https://github.com/tym83/mansplainetes/releases/download/<tag>/mansplain.yaml
+#
+# Run by hand (workflow_dispatch), it is a dry run: the same builds under
+# version v0.0.0-dryrun, with nothing pushed or released.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -20,25 +24,38 @@ jobs:
     timeout-minutes: 30
     env:
       GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ github.event_name == 'push' && github.ref_name || 'v0.0.0-dryrun' }}
+      PUSH: ${{ github.event_name == 'push' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
       - run: go test -race ./...
-      - run: hack/krew-release.sh "${GITHUB_REF_NAME}" dist
-      - name: Push the webhook image
+      - run: hack/krew-release.sh "${VERSION}" dist
+      - name: Build the webhook image (pushed on a tag)
         run: |
-          echo "${GH_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          if [ "${PUSH}" = true ]; then
+            echo "${GH_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+            output=--push
+          else
+            output=--output=type=cacheonly
+          fi
           docker buildx create --use
-          docker buildx build --push --platform linux/amd64,linux/arm64 \
-            -t "ghcr.io/tym83/mansplainetes-webhook:${GITHUB_REF_NAME}" .
-      - name: Push the chart
+          docker buildx build "${output}" --platform linux/amd64,linux/arm64 \
+            -t "ghcr.io/tym83/mansplainetes-webhook:${VERSION}" .
+      - name: Package the chart (pushed on a tag)
         run: |
-          echo "${GH_TOKEN}" | helm registry login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
-          helm package charts/mansplainetes --version "${GITHUB_REF_NAME#v}" --app-version "${GITHUB_REF_NAME}" -d dist
-          helm push "dist/mansplainetes-${GITHUB_REF_NAME#v}.tgz" oci://ghcr.io/tym83/charts
+          helm package charts/mansplainetes --version "${VERSION#v}" --app-version "${VERSION}" -d dist
+          if [ "${PUSH}" = true ]; then
+            echo "${GH_TOKEN}" | helm registry login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+            helm push "dist/mansplainetes-${VERSION#v}.tgz" oci://ghcr.io/tym83/charts
+          fi
+      - name: List the dry-run output
+        if: github.event_name != 'push'
+        run: ls -l dist
       - name: Create release
+        if: github.event_name == 'push'
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             --title "Mansplainetes ${GITHUB_REF_NAME}" \
