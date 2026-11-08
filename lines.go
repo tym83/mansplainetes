@@ -16,15 +16,10 @@ limitations under the License.
 
 package main
 
+import "github.com/tym83/mansplainetes/persona"
+
 // openers start every unsolicited explanation.
-var openers = []string{
-	"Well, actually,",
-	"So, basically,",
-	"As a senior engineer,",
-	"Not to mansplain, but",
-	"Okay, let me break this down for you:",
-	"Great question you didn't ask.",
-}
+var openers = persona.Openers
 
 // explanations explain the command the user just typed back to them. %s is
 // the resource, when there is one.
@@ -66,13 +61,7 @@ var pronunciations = []string{
 }
 
 // credits take credit for a command that worked.
-var credits = []string{
-	"You're welcome.",
-	"See? It's easy once someone explains it properly.",
-	"I'd have done it faster, but good job, sport.",
-	"Told you.",
-	"That worked because of what I said earlier.",
-}
+var credits = persona.Credits
 
 // stolenIdea is said when the user repeats a command that already worked.
 const stolenIdea = "Glad you finally came around to my idea."

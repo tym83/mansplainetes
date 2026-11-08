@@ -25,6 +25,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/tym83/mansplainetes/persona"
 )
 
 // flagsWithValues take the next argument as their value, so it is not
@@ -278,15 +280,7 @@ func (e *Expert) Before(args []string) []string {
 
 // joinOpener starts a new sentence with a capital letter after an opener
 // that ends one ("Great question you didn't ask.").
-func joinOpener(opener, text string) string {
-	if strings.HasSuffix(opener, ".") || strings.HasSuffix(opener, ":") {
-		if r := []rune(text); len(r) > 0 && r[0] >= 'a' && r[0] <= 'z' {
-			r[0] -= 'a' - 'A'
-			text = string(r)
-		}
-	}
-	return opener + " " + text
-}
+func joinOpener(opener, text string) string { return persona.JoinOpener(opener, text) }
 
 // AfterSuccess takes credit, and notices when the user repeats something
 // that already worked, which he then remembers as his idea.
@@ -305,7 +299,7 @@ func (e *Expert) AfterFailure(stderr string) []string {
 	return []string{
 		e.pick(blames),
 		"Running PMS detector... detected: PMS.",
-		"PMS: Probably My Setup. " + Cause(stderr),
+		persona.PMS + " " + Cause(stderr),
 		"Anyway. Deep breaths.",
 	}
 }
