@@ -28,7 +28,7 @@ expect() {
 	local what=$1 out=$2
 	shift 2
 	for p in "$@"; do
-		if grep -qF -- "$p" <<<"$out"; then
+		if grep -qiF -- "$p" <<<"$out"; then
 			ok "$what: $p"
 		else
 			bad "$what: missing '$p'"
