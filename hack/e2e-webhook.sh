@@ -168,21 +168,24 @@ out=$(kubectl --as=system:serviceaccount:$loud:argo -n "$loud" run argo --image=
 silent "service account (serviceAccounts=false)" "$out"
 
 if [ "$mode" = helm ]; then
-	echo "# helm upgrade keeps the generated certificate"
+	echo "# helm upgrade: the generated certificate is kept, nobody goes unheard"
 	sum() { kubectl -n "$ns" get secret "$release-tls" -o jsonpath="{.data.$1}" | sha256sum | cut -d' ' -f1; }
 	crt=$(sum 'tls\.crt')
 	ca=$(sum 'ca\.crt')
 	bundle=$(kubectl get validatingwebhookconfiguration "$release" -o jsonpath='{.webhooks[0].clientConfig.caBundle}')
-	helm upgrade "$release" "$root/charts/mansplainetes" "${chart_args[@]}" --set quietFor=11m
-	# quietFor changes the pod template: wait for the new pod, or the next
-	# request can reach no webhook at all (failurePolicy Ignore) and stay silent.
-	kubectl -n "$ns" rollout status deploy "$release" --timeout=2m
+	# quietFor changes the pod template, so every upgrade replaces the pod.
+	# Ask right after each rollout, while the old pod is still terminating and
+	# may still be behind the Service: nobody may go unheard during a rollout.
+	for i in 1 2 3 4 5; do
+		helm upgrade "$release" "$root/charts/mansplainetes" "${chart_args[@]}" --set quietFor=1${i}m >/dev/null
+		kubectl -n "$ns" rollout status deploy "$release" --timeout=2m >/dev/null
+		out=$(as carol@example.com -n "$loud" run "after-upgrade-$i" --image=nginx:latest)
+		expect "right after upgrade $i" "$out" "you're creating pod/after-upgrade-$i in $loud"
+	done
 	[ "$crt" = "$(sum 'tls\.crt')" ] && ok "tls.crt kept across upgrade" || bad "tls.crt changed on upgrade"
 	[ "$ca" = "$(sum 'ca\.crt')" ] && ok "ca.crt kept across upgrade" || bad "ca.crt changed on upgrade"
 	[ "$bundle" = "$(kubectl get validatingwebhookconfiguration "$release" -o jsonpath='{.webhooks[0].clientConfig.caBundle}')" ] &&
 		ok "caBundle kept across upgrade" || bad "caBundle changed on upgrade"
-	out=$(as carol@example.com -n "$loud" run after-upgrade --image=nginx:latest)
-	expect "after upgrade" "$out" "you're creating pod/after-upgrade in $loud"
 fi
 
 echo "# webhook down: requests pass (failurePolicy Ignore)"
