@@ -43,6 +43,7 @@ func main() {
 	key := flag.String("tls-key", "/tls/tls.key", "TLS private key")
 	window := flag.Duration("quiet-for", 10*time.Minute, "how long he keeps quiet about the same object to the same person")
 	sas := flag.Bool("service-accounts", false, "talk to service accounts too (never those in kube-system)")
+	drain := flag.Duration("drain", 5*time.Second, "after SIGTERM, keep serving this long, until the API server stops sending requests here")
 	flag.Parse()
 
 	m := webhook.NewMansplainer(*window, seed())
@@ -67,6 +68,12 @@ func main() {
 	defer stop()
 	go func() {
 		<-ctx.Done()
+		// A terminating pod leaves the Service's endpoints only after the
+		// fact, and every kube-proxy takes its time to notice. Closing the
+		// listener at once would refuse the requests still routed here, and
+		// with failurePolicy Ignore they pass unseen.
+		log.Printf("mansplainetes-webhook: draining for %s", *drain)
+		time.Sleep(*drain)
 		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(shutdown)
