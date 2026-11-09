@@ -27,7 +27,7 @@ with a single replica. The opinions are his.
 
 ```bash
 helm install mansplainetes oci://ghcr.io/tym83/charts/mansplainetes \
-  --version <version> --namespace mansplainetes --create-namespace
+  --namespace mansplainetes --create-namespace
 kubectl label namespace shop mansplainetes.dev/mode=on
 ```
 
