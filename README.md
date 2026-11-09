@@ -72,7 +72,7 @@ plugin named `report`; reach it with `MANSPLAIN=off mansplainctl report ...`.
 As a kubectl plugin, with [krew](https://krew.sigs.k8s.io/):
 
 ```bash
-kubectl krew install --manifest-url=https://github.com/tym83/mansplainetes/releases/download/v0.1.0/mansplain.yaml
+kubectl krew install --manifest-url=https://github.com/tym83/mansplainetes/releases/latest/download/mansplain.yaml
 kubectl mansplain get pods
 ```
 
@@ -157,7 +157,7 @@ or image.
 
 ```bash
 helm install mansplainetes oci://ghcr.io/tym83/charts/mansplainetes \
-  --version <version> --namespace mansplainetes --create-namespace
+  --namespace mansplainetes --create-namespace
 kubectl label namespace shop mansplainetes.dev/mode=on
 ```
 
